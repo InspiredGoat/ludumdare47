@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <time.h>
+
 #include <GLES3/gl3.h>
 #include <GLFW/glfw3.h>
 
@@ -129,6 +131,21 @@ BatchID Batch_create(unsigned int max_pool_size) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * 6 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
 
+	// indices can be generated in advance
+	for(unsigned int i = 0; i < max_pool_size; i++) {
+		unsigned int indices[6];
+
+		indices[0] = i * 4;
+		indices[1] = i * 4 + 1;
+		indices[2] = i * 4 + 3;
+		indices[3] = i * 4 + 1;
+		indices[4] = i * 4 + 2;
+		indices[5] = i * 4 + 3;
+
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, i * 6 * sizeof(unsigned int), sizeof(unsigned int) * 6, indices);
+	}
+
+
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 0);
 
@@ -154,8 +171,6 @@ void Batch_drawRect(float x, float y, float width, float height) {
 
 	// if buffers are full, flush before proceeding
 	if(batch->current_index >= batch->max_pool_size) {
-		printf("This Ran %i\n", __LINE__);
-
 		Batch_flush(active_batch_index);
 	}
 
@@ -178,40 +193,11 @@ void Batch_drawRect(float x, float y, float width, float height) {
 	verts[3].x = x;
 	verts[3].y = y;
 
-
-	verts[0].x = .5f;
-	verts[0].y = .5f;
-
-	verts[1].x = .5f;
-	verts[1].y = -.5f;
-
-	verts[2].x = -.5f;
-	verts[2].y = -.5f;
-
-	verts[3].x = -.5f;
-	verts[3].y = .5f;
-
-	// 2 tris per quad, 6 indices
-	unsigned int indices[6];
-
-	unsigned int vertex_count = batch->current_index * 4;
-
-	indices[0] = vertex_count;
-	indices[1] = vertex_count + 1;
-	indices[2] = vertex_count + 3;
-	indices[3] = vertex_count + 1;
-	indices[4] = vertex_count + 2;
-	indices[5] = vertex_count + 3;
-
 	glBindVertexArray(batch->vao);
 
 	// allocate 4 vertices per rect
 	glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, batch->current_index * 4 * sizeof(Vertex), sizeof(Vertex) * 4, verts);
-
-	// allocate indeces
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->ebo);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, batch->current_index * 6 * sizeof(unsigned int), sizeof(unsigned int) * 6, indices);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -229,6 +215,7 @@ void Batch_flush() {
 
 	glBindVertexArray(batch->vao);
 
+	printf("Current index: %i\n", batch->current_index);
 	// draw instanced elements
 	glDrawElementsInstanced(GL_TRIANGLES, batch->current_index * 6, GL_UNSIGNED_INT, 0, batch->current_index);
 	glBindVertexArray(0);
