@@ -17,8 +17,10 @@ typedef struct {
 } Vertex;
 
 typedef struct {
+	unsigned char is_active;
 	unsigned int vao;
 	unsigned int vbo;
+	unsigned int ebo;
 	unsigned int max_pool_size;
 	unsigned int current_index;
 } Batch;
@@ -27,27 +29,23 @@ typedef struct {
 //----------------------------------------------------------------------------------------------------
 
 
-static const char* vertex_shader_source =
-"#version 330\n"
-"\n"
-"layout (location = 0) in vec2 aPos;\n"
-"\n"
-"void main() {\n"
-"	gl_Position = vec4(aPos, 1.0);\n"
-"}\n";
-static const char* frag_shader_source = 
-"#version 330\n"
-"\n"
-"out vec4 FragColor"
-"\n"
-"void main() {\n"
-"	FragColor = vec4(1.0, 1.0, 0, 1.0);\n"
-"}\n";
+static const char* vertex_shader_source = "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Postion = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "}\0";
+static const char* frag_shader_source = "#version 330 core\n"
+	"out vec4 FragColor;"
+	"void main() {\n"
+	"	FragColor = vec4(1.0f, 1.0f, 0, 1.0f);\n"
+	"}\n\0";
 
 static unsigned int shader_program;
 
 static unsigned short max_batch_count = 0;
 static unsigned short active_batch_count = 0;
+static unsigned short active_batch_index = 0;
 static Batch* batches;
 
 
@@ -61,14 +59,14 @@ void Batch_system_init(unsigned short max_batches) {
 
 	// compile shader programs
 	
-	int success;
-	char info_log[512];
-
 	unsigned int vertex_shader;
 	vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
 	glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
 	glCompileShader(vertex_shader);
+
+	int success = 1;
+	char info_log[512];
 
 	glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
 	if(!success) {
@@ -101,6 +99,11 @@ void Batch_system_init(unsigned short max_batches) {
 }
 
 
+void Batch_system_free() {
+	free(batches);
+}
+
+
 //----------------------------------------------------------------------------------------------------
 
 
@@ -115,51 +118,84 @@ BatchID Batch_create(unsigned int max_pool_size) {
 	glGenVertexArrays(1, &batch->vao);
 	glBindVertexArray(batch->vao);
 
+	glGenBuffers(1, &batch->vbo);
+	glGenBuffers(1, &batch->ebo);
+
 	// allocate memory on gpu
 	glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 2 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, batch->ebo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(unsigned int) * 6 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
 
 	// unbind data
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
 	active_batch_count++;
-	return active_batch_count;
+	active_batch_index = active_batch_count - 1;
+	return active_batch_count - 1;
 }
 
 // REWORK
-void Batch_remove(BatchID id) {
+void Batch_destroy(BatchID id) {
 }
 
 
 //----------------------------------------------------------------------------------------------------
 
 
-void Batch_drawRect(BatchID id, int x, int y, int width, int height) {
-	Vertex verts[2];
-
-	verts[0].x = x;
-	verts[0].y = y;
-
-	verts[1].x = x + width;
-	verts[1].y = y + height;
-
-
-
-	Batch* batch = &batches[id];
+void Batch_drawRect(float x, float y, float width, float height) {
+	Batch* batch = &batches[active_batch_index];
 
 	// if buffers are full, flush before proceeding
 	if(batch->current_index >= batch->max_pool_size) {
-		Batch_flush(id);
+		Batch_flush(active_batch_index);
 	}
+
+	// 4 points per quad
+	Vertex verts[4];
+
+	// top right
+	verts[0].x = x + width;
+	verts[0].y = y;
+
+	// bottom right
+	verts[1].x = x + width;
+	verts[1].y = y + height;
+
+	// bottom left
+	verts[2].x = x;
+	verts[2].y = y + height;
+
+	// top left
+	verts[3].x = x;
+	verts[3].y = y;
+
+	// 2 tris per quad, 6 indices
+	unsigned int indices[6];
+
+	unsigned int vertex_count = batch->current_index * 4;
+
+	indices[0] = vertex_count;
+	indices[1] = vertex_count + 1;
+	indices[2] = vertex_count + 3;
+	indices[3] = vertex_count + 1;
+	indices[4] = vertex_count + 2;
+	indices[5] = vertex_count + 3;
 
 	glBindVertexArray(batch->vao);
 
-	// allocate 2 vertices per rect
+	// allocate 4 vertices per rect
 	glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, batch->current_index * 2 * sizeof(Vertex), sizeof(Vertex) * 2, verts);
+	glBufferSubData(GL_ARRAY_BUFFER, batch->current_index * 4 * sizeof(Vertex), sizeof(Vertex) * 4, verts);
 
 	// allocate indeces
+	glBindBuffer(GL_ARRAY_BUFFER, batch->ebo);
+	glBufferSubData(GL_ARRAY_BUFFER, batch->current_index * 6 * sizeof(unsigned int), sizeof(unsigned int) * 6, indices);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 	batch->current_index++;
 }
@@ -168,10 +204,13 @@ void Batch_drawRect(BatchID id, int x, int y, int width, int height) {
 //----------------------------------------------------------------------------------------------------
 
 
-void Batch_flush(BatchID id) {
-	Batch* batch = &batches[id];
+void Batch_flush() {
+	Batch* batch = &batches[active_batch_index];
+
+	glBindVertexArray(batch->vao);
 
 	// draw instanced elements
+	glDrawElementsInstanced(GL_TRIANGLES, batch->current_index * 6, GL_UNSIGNED_INT, 0, batch->current_index); 
 
 	// reset batch parameters
 	batch->current_index = 0;

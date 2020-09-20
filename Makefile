@@ -1,4 +1,4 @@
-SOURCES = main.c
+SOURCES = main.c batch2d.c
 SRC = $(addprefix src/, $(SOURCES))
 OBJ = $(addsuffix .o, $(addprefix bin/, $(basename $(notdir $(SRC)))));
 INCLUDE = #-I include
