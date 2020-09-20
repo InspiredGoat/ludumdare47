@@ -13,15 +13,20 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	GLFWwindow* window = glfwCreateWindow(800, 800, "testapp", NULL, NULL);
+	glfwMakeContextCurrent(window);
 	glViewport(0, 0, 800, 800);
 
 	Batch_system_init(1);
-	BatchID id = Batch_create(10);
+	BatchID id = Batch_create(10000);
 
 	while(!glfwWindowShouldClose(window)) {
 		glfwSwapBuffers(window);
-		Batch_drawRect(-1, -1, 2, 2);
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		Batch_drawRect(1, 1, 1, 1);
 		Batch_flush();
+
 		glfwPollEvents();
 	}
 
