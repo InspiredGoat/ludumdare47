@@ -33,6 +33,7 @@ typedef struct {
 
 static const char* vertex_shader_source = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
+	"uniform mat4 matrix;"
     "void main()\n"
     "{\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
@@ -126,10 +127,10 @@ BatchID Batch_create(unsigned int max_pool_size) {
 
 	// allocate memory on gpu
 	glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4 * max_pool_size, NULL, GL_STREAM_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * 6 * max_pool_size, NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * 6 * max_pool_size, NULL, GL_STATIC_DRAW);
 
 	// indices can be generated in advance
 	for(unsigned int i = 0; i < max_pool_size; i++) {
@@ -166,12 +167,13 @@ void Batch_destroy(BatchID id) {
 
 //----------------------------------------------------------------------------------------------------
 
+
 void Batch_drawRect(float x, float y, float width, float height) {
 	Batch* batch = &batches[active_batch_index];
 
 	// if buffers are full, flush before proceeding
 	if(batch->current_index >= batch->max_pool_size) {
-		Batch_flush(active_batch_index);
+		Batch_flush();
 	}
 
 	// 4 points per quad
@@ -215,7 +217,6 @@ void Batch_flush() {
 
 	glBindVertexArray(batch->vao);
 
-	printf("Current index: %i\n", batch->current_index);
 	// draw instanced elements
 	glDrawElementsInstanced(GL_TRIANGLES, batch->current_index * 6, GL_UNSIGNED_INT, 0, batch->current_index);
 	glBindVertexArray(0);
