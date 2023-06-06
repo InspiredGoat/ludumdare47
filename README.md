@@ -14,6 +14,5 @@ Check out my submission [here](https://ldjam.com/events/ludum-dare/47/test-1)
 
 ---
 
+Click the image below for a video demo / runthrough.
 [![video demo](http://img.youtube.com/vi/2ddJIBizHbQ/0.jpg)](http://www.youtube.com/watch?v=2ddJIBizHbQ)
-
-You are a purple peasant who’s home has been cursed with an undead spell, skeletons have invaded and you find you’ve become immortal skipping back to the start of the curse upon death. You equip your trusty historically-accurate shuriken and decide to take your revenge.
