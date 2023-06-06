@@ -10,10 +10,10 @@ If you want to compile on linux, here are all the dependencies
 - GLFW
 - OpenAL
 
-Check out my submission (here)[https://ldjam.com/events/ludum-dare/47/test-1]
+Check out my submission (https://ldjam.com/events/ludum-dare/47/test-1)[here]
 
 ---
 
-https://www.youtube.com/watch?v=2ddJIBizHbQ
+[![]()](https://www.youtube.com/watch?v=2ddJIBizHbQ)
 
 You are a purple peasant who’s home has been cursed with an undead spell, skeletons have invaded and you find you’ve become immortal skipping back to the start of the curse upon death. You equip your trusty historically-accurate shuriken and decide to take your revenge.
